@@ -3,19 +3,19 @@
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
 cliVersion: 4.10.1
-domain: my.domain
+domain: gostration.io
 layout:
 - go.kubebuilder.io/v4
 projectName: gostration
-repo: gostration
+repo: github.com/kination/gostration
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: my.domain
+  domain: gostration.io
   group: workflow
   kind: Dag
-  path: gostration/api/v1
+  path: github.com/kination/gostration/api/v1
   version: v1
 version: "3"

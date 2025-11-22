@@ -1,4 +1,4 @@
-apiVersion: workflow.my.domain/v1
+apiVersion: workflow.gostration.io/v1
 kind: Dag
 metadata:
   labels:

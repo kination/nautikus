@@ -1,61 +1,56 @@
-/*
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// TaskType은 지원할 Operator 종류를 정의합니다.
+type TaskType string
 
-// DagSpec defines the desired state of Dag
-type DagSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+const (
+	TaskTypeBash   TaskType = "Bash"
+	TaskTypePython TaskType = "Python"
+	TaskTypeGo     TaskType = "Go"
+)
 
-	// foo is an example field of Dag. Edit dag_types.go to remove/update
-	// +optional
-	Foo *string `json:"foo,omitempty"`
+// TaskSpec은 DAG 내부의 개별 작업 단위입니다.
+type TaskSpec struct {
+	Name         string   `json:"name"`
+	Type         TaskType `json:"type"`
+	Dependencies []string `json:"dependencies,omitempty"` // 이 Task가 실행되기 위해 완료되어야 할 부모 Task들
+
+	// Operator별 실행 내용
+	Command string `json:"command,omitempty"` // Bash용
+	Script  string `json:"script,omitempty"`  // Python/Go 코드 본문
+	Image   string `json:"image,omitempty"`   // 커스텀 이미지 사용 시
 }
 
-// DagStatus defines the observed state of Dag.
+// DagSpec은 사용자가 정의하는 DAG의 전체 명세입니다.
+type DagSpec struct {
+	Tasks []TaskSpec `json:"tasks"`
+}
+
+// TaskStatus는 개별 Task의 현재 상태입니다.
+type TaskState string
+
+const (
+	StatePending   TaskState = "Pending"
+	StateRunning   TaskState = "Running"
+	StateCompleted TaskState = "Completed"
+	StateFailed    TaskState = "Failed"
+)
+
+type TaskStatus struct {
+	Name    string    `json:"name"`
+	State   TaskState `json:"state"`
+	PodName string    `json:"podName,omitempty"`
+	Message string    `json:"message,omitempty"`
+}
+
+// DagStatus는 DAG 전체의 상태입니다.
 type DagStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-
-	// conditions represent the current state of the Dag resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
-	// +listType=map
-	// +listMapKey=type
-	// +optional
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	State        TaskState    `json:"state"` // DAG 전체 상태 (Running, Completed...)
+	TaskStatuses []TaskStatus `json:"taskStatuses,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -63,19 +58,11 @@ type DagStatus struct {
 
 // Dag is the Schema for the dags API
 type Dag struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// metadata is a standard object metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitzero"`
-
-	// spec defines the desired state of Dag
-	// +required
-	Spec DagSpec `json:"spec"`
-
-	// status defines the observed state of Dag
-	// +optional
-	Status DagStatus `json:"status,omitzero"`
+	Spec   DagSpec   `json:"spec,omitempty"`
+	Status DagStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -83,7 +70,7 @@ type Dag struct {
 // DagList contains a list of Dag
 type DagList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitzero"`
+	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Dag `json:"items"`
 }
 
