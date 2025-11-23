@@ -1,5 +1,4 @@
-# sdk.py
-import yaml
+import json
 import sys
 
 class Task:
@@ -30,7 +29,7 @@ class DAG:
         self.name = name
         self.tasks = tasks
 
-    def generate_yaml(self):
+    def generate_json(self):
         manifest = {
             "apiVersion": "workflow.my.domain/v1",
             "kind": "Dag",
@@ -39,7 +38,7 @@ class DAG:
                 "tasks": [t.to_dict() for t in self.tasks]
             }
         }
-        return yaml.dump(manifest)
+        return json.dumps(manifest, indent=2)
 
 # === 사용 예시 (User Code) ===
 if __name__ == "__main__":
@@ -66,7 +65,7 @@ func main() {
     # 의존성 설정: t1 -> t2 -> t3
     t1 >> t2 >> t3
 
-    # YAML 생성
+    # JSON 생성
     my_dag = DAG("example-dag", [t1, t2, t3])
-    print(my_dag.generate_yaml())
+    print(my_dag.generate_json())
     
