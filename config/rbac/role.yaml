@@ -6,6 +6,41 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - workflow.gostration.io
+  resources:
+  - dags
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - workflow.gostration.io
+  resources:
+  - dags/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - workflow.gostration.io
+  resources:
+  - dags/finalizers
+  verbs:
+  - update

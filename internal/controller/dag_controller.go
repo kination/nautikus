@@ -18,6 +18,10 @@ import (
 )
 
 // DagReconciler reconciles a Dag object
+// +kubebuilder:rbac:groups=workflow.gostration.io,resources=dags,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=workflow.gostration.io,resources=dags/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=workflow.gostration.io,resources=dags/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
 type DagReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -26,24 +30,24 @@ type DagReconciler struct {
 func (r *DagReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	// 1. DAG CR 가져오기
+	// Bring DAG CR
 	var dag workflowv1.Dag
 	if err := r.Get(ctx, req.NamespacedName, &dag); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// 2. 현재 실행 중인 Pod들과 Status 동기화
+	// Sync current running Pod and Status
 	if err := r.syncStatus(ctx, &dag); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// 3. 실행할 다음 Task 찾기 (의존성 체크)
+	// Find next task to run (dependency check)
 	nextTasks := r.getNextTasks(&dag)
 
-	// 4. Pod 생성
+	// Create Pod
 	for _, task := range nextTasks {
 		pod := r.buildPod(&dag, task)
-		// Pod 소유권 설정 (DAG 삭제 시 Pod도 삭제되도록)
+		// Set owner reference (Pod will be deleted when DAG is deleted)
 		if err := controllerutil.SetControllerReference(&dag, pod, r.Scheme); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -54,12 +58,12 @@ func (r *DagReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 	}
 
-	// 5. Status 업데이트
+	// Update Status
 	if err := r.Status().Update(ctx, &dag); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// DAG가 아직 안 끝났다면 계속 Reconcile
+	// If DAG is not finished, continue Reconcile
 	if dag.Status.State == workflowv1.StateRunning {
 		return ctrl.Result{Requeue: true}, nil
 	}
@@ -67,19 +71,19 @@ func (r *DagReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	return ctrl.Result{}, nil
 }
 
-// 현재 Pod 상태를 보고 DAG Status 업데이트
+// Sync Pod status to DAG status
 func (r *DagReconciler) syncStatus(ctx context.Context, dag *workflowv1.Dag) error {
-	// 맵 초기화
+	// Initialize map
 	if dag.Status.TaskStatuses == nil {
 		dag.Status.TaskStatuses = []workflowv1.TaskStatus{}
 	}
 
-	// 전체 상태가 없으면 Running으로 시작
+	// If no state, set to Running
 	if dag.Status.State == "" {
 		dag.Status.State = workflowv1.StateRunning
 	}
 
-	// 실제 Pod 상태 조회
+	// Sync actual Pod status
 	statusMap := make(map[string]*workflowv1.TaskStatus)
 	for i := range dag.Status.TaskStatuses {
 		t := &dag.Status.TaskStatuses[i]
@@ -87,7 +91,7 @@ func (r *DagReconciler) syncStatus(ctx context.Context, dag *workflowv1.Dag) err
 	}
 
 	for _, taskSpec := range dag.Spec.Tasks {
-		// 이미 완료/실패된 건 패스
+		// Skip if already completed or failed
 		currentStatus, exists := statusMap[taskSpec.Name]
 		if !exists {
 			continue
@@ -96,23 +100,23 @@ func (r *DagReconciler) syncStatus(ctx context.Context, dag *workflowv1.Dag) err
 			continue
 		}
 
-		// Pod 조회
+		// Bring Pod
 		pod := &corev1.Pod{}
 		err := r.Get(ctx, types.NamespacedName{Name: currentStatus.PodName, Namespace: dag.Namespace}, pod)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				// Pod가 없으면 아직 생성 전이거나 삭제됨
+				// Skip if Pod not found
 				continue
 			}
 			return err
 		}
 
-		// Pod 상태 반영
+		// Update Pod status
 		if pod.Status.Phase == corev1.PodSucceeded {
 			currentStatus.State = workflowv1.StateCompleted
 		} else if pod.Status.Phase == corev1.PodFailed {
 			currentStatus.State = workflowv1.StateFailed
-			dag.Status.State = workflowv1.StateFailed // 하나라도 실패하면 DAG 실패
+			dag.Status.State = workflowv1.StateFailed // If one task fails, mark DAG as failed
 		} else {
 			currentStatus.State = workflowv1.StateRunning
 		}
@@ -120,23 +124,23 @@ func (r *DagReconciler) syncStatus(ctx context.Context, dag *workflowv1.Dag) err
 	return nil
 }
 
-// 실행 가능한(의존성이 해결된) Task 찾기
+// Find next task to run (dependency check)
 func (r *DagReconciler) getNextTasks(dag *workflowv1.Dag) []workflowv1.TaskSpec {
 	var nextTasks []workflowv1.TaskSpec
 
-	// 상태 룩업 맵
+	// Initialize status map
 	statusMap := make(map[string]workflowv1.TaskState)
 	for _, s := range dag.Status.TaskStatuses {
 		statusMap[s.Name] = s.State
 	}
 
 	for _, task := range dag.Spec.Tasks {
-		// 이미 실행 중이거나 완료된 Task는 제외
+		// Skip if already running or completed
 		if state, ok := statusMap[task.Name]; ok && state != "" {
 			continue
 		}
 
-		// 의존성 체크
+		// Dependency check
 		allDepsCompleted := true
 		for _, dep := range task.Dependencies {
 			if statusMap[dep] != workflowv1.StateCompleted {
@@ -147,18 +151,18 @@ func (r *DagReconciler) getNextTasks(dag *workflowv1.Dag) []workflowv1.TaskSpec 
 
 		if allDepsCompleted {
 			nextTasks = append(nextTasks, task)
-			// 중복 실행 방지를 위해 상태를 미리 Pending으로 추가 (실제 업데이트는 Reconcile 끝에서)
+			// Prevent duplicate execution by adding status to Pending (actual update at Reconcile end)
 			dag.Status.TaskStatuses = append(dag.Status.TaskStatuses, workflowv1.TaskStatus{
 				Name:    task.Name,
 				State:   workflowv1.StatePending,
-				PodName: fmt.Sprintf("%s-%s", dag.Name, task.Name), // Pod 이름 규칙
+				PodName: fmt.Sprintf("%s-%s", dag.Name, task.Name), // Pod name rule
 			})
 		}
 	}
 	return nextTasks
 }
 
-// TaskSpec을 Pod로 변환 (Bash, Python, Go Operator 로직)
+// Convert TaskSpec to Pod (Bash, Python, Go Operator logic)
 func (r *DagReconciler) buildPod(dag *workflowv1.Dag, task workflowv1.TaskSpec) *corev1.Pod {
 	podName := fmt.Sprintf("%s-%s", dag.Name, task.Name)
 
@@ -173,15 +177,15 @@ func (r *DagReconciler) buildPod(dag *workflowv1.Dag, task workflowv1.TaskSpec) 
 		args = []string{task.Command}
 	case workflowv1.TaskTypePython:
 		image = "python:3.9-slim"
-		// Python 코드를 인라인으로 실행
+		// Python code inline execution
 		command = []string{"python", "-c"}
 		args = []string{task.Script}
 	case workflowv1.TaskTypeGo:
 		image = "golang:1.20-alpine"
-		// Go 코드는 파일로 저장 후 실행하거나, 여기서는 간단히 go run을 위해 sh 감싸기
-		// 실제로는 ConfigMap으로 코드를 마운트하는 것이 좋습니다.
+		// Go code inline execution
+		// TODO: Use ConfigMap to mount code
 		command = []string{"/bin/sh", "-c"}
-		// 매우 간단한 인라인 실행 예시 (복잡한 코드는 ConfigMap 권장)
+		// Simple inline execution example (complex code should use ConfigMap)
 		goCmd := fmt.Sprintf("echo '%s' > main.go && go run main.go", task.Script)
 		args = []string{goCmd}
 	}
@@ -213,6 +217,6 @@ func (r *DagReconciler) buildPod(dag *workflowv1.Dag, task workflowv1.TaskSpec) 
 func (r *DagReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&workflowv1.Dag{}).
-		Owns(&corev1.Pod{}). // Pod 상태 변화를 감지
+		Owns(&corev1.Pod{}).
 		Complete(r)
 }
