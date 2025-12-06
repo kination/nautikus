@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	workflowv1 "github.com/kination/gostration/api/v1"
+	workflowv1 "github.com/kination/pequod/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,7 +31,7 @@ func main() {
 	// Define DAG
 	dag := workflowv1.Dag{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "workflow.my.domain/v1",
+			APIVersion: "workflow.pequod.io/v1",
 			Kind:       "Dag",
 		},
 		ObjectMeta: metav1.ObjectMeta{

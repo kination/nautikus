@@ -14,13 +14,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	workflowv1 "github.com/kination/gostration/api/v1"
+	workflowv1 "github.com/kination/pequod/api/v1"
 )
 
 // DagReconciler reconciles a Dag object
-// +kubebuilder:rbac:groups=workflow.gostration.io,resources=dags,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=workflow.gostration.io,resources=dags/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=workflow.gostration.io,resources=dags/finalizers,verbs=update
+// +kubebuilder:rbac:groups=workflow.pequod.io,resources=dags,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=workflow.pequod.io,resources=dags/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=workflow.pequod.io,resources=dags/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
 type DagReconciler struct {
 	client.Client

@@ -1,4 +1,4 @@
-module github.com/kination/gostration
+module github.com/kination/pequod
 
 go 1.24.6
 

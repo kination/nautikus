@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kination/gostration/internal/compiler"
+	"github.com/kination/pequod/internal/compiler"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 	outputDir := flag.String("out", "dist", "Directory to save generated JSON files")
 	flag.Parse()
 
-	fmt.Println("🚀 Starting Gostration DAG Compiler...")
+	fmt.Println("🚀 Starting Pequod DAG Compiler...")
 	fmt.Printf("   - Config: %s\n", *configPath)
 	fmt.Printf("   - Output: %s\n", *outputDir)
 
