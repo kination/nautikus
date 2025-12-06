@@ -2,10 +2,45 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: gostration
+    app.kubernetes.io/name: pequod
     app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - workflow.pequod.io
+  resources:
+  - dags
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - workflow.pequod.io
+  resources:
+  - dags/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - workflow.pequod.io
+  resources:
+  - dags/finalizers
+  verbs:
+  - update

@@ -1,0 +1,27 @@
+{
+  "kind": "Dag",
+  "apiVersion": "workflow.my.domain/v1",
+  "metadata": {
+    "name": "go-generated-dag"
+  },
+  "spec": {
+    "tasks": [
+      {
+        "name": "go-task-1",
+        "type": "Bash",
+        "command": "echo 'Hello from Go DAG'"
+      },
+      {
+        "name": "go-task-2",
+        "type": "Go",
+        "dependencies": [
+          "go-task-1"
+        ],
+        "script": "package main\nimport \"fmt\"\nfunc main() {\n\tfmt.Println(\"This is a Go task running inside the Pod\")\n}"
+      }
+    ]
+  },
+  "status": {
+    "state": ""
+  }
+}

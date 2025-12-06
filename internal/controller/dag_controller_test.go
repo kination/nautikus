@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	workflowv1 "github.com/kination/gostration/api/v1"
+	workflowv1 "github.com/kination/pequod/api/v1"
 )
 
 var _ = Describe("Dag Controller", func() {

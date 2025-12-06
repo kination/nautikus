@@ -1,7 +1,7 @@
-# This rule is not used by the project gostration itself.
+# This rule is not used by the project pequod itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants read-only access to workflow.gostration.io resources.
+# Grants read-only access to workflow.pequod.io resources.
 # This role is intended for users who need visibility into these resources
 # without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
 
@@ -9,12 +9,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: gostration
+    app.kubernetes.io/name: pequod
     app.kubernetes.io/managed-by: kustomize
   name: dag-viewer-role
 rules:
 - apiGroups:
-  - workflow.gostration.io
+  - workflow.pequod.io
   resources:
   - dags
   verbs:
@@ -22,7 +22,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - workflow.gostration.io
+  - workflow.pequod.io
   resources:
   - dags/status
   verbs:

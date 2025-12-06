@@ -1,0 +1,9 @@
+apiVersion: workflow.pequod.io/v1
+kind: Dag
+metadata:
+  name: dag-test
+spec:
+  tasks:
+    - name: hello-task
+      type: Bash
+      command: "echo 'Hello from Pequod!'"

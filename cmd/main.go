@@ -35,8 +35,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	workflowv1 "github.com/kination/gostration/api/v1"
-	"github.com/kination/gostration/internal/controller"
+	workflowv1 "github.com/kination/pequod/api/v1"
+	"github.com/kination/pequod/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -160,7 +160,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "0403ed10.gostration.io",
+		LeaderElectionID:       "0403ed10.pequod.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
