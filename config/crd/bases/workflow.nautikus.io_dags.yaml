@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: dags.workflow.pequod.io
+  name: dags.workflow.nautikus.io
 spec:
-  group: workflow.pequod.io
+  group: workflow.nautikus.io
   names:
     kind: Dag
     listKind: DagList

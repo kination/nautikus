@@ -32,7 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	workflowv1 "github.com/kination/pequod/api/v1"
+	workflowv1 "github.com/kination/nautikus/api/v1"
 	// +kubebuilder:scaffold:imports
 )
 

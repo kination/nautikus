@@ -1,4 +1,4 @@
-# pequod
+# nautikus
 // TODO: 
 
 ## Getting Started
@@ -12,7 +12,7 @@
 1. Build & push your image to location specified by `IMG`:
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/pequod:tag
+make docker-build docker-push IMG=<some-registry>/nautikus:tag
 ```
 
 2. Install the CRDs into the cluster:
@@ -24,7 +24,7 @@ make install
 3. Deploy the Manager to the cluster with image specified by `IMG`:
 
 ```sh
-make deploy IMG=<some-registry>/pequod:tag
+make deploy IMG=<some-registry>/nautikus:tag
 ```
 
 > If you encounter RBAC errors, you may need to grant yourself cluster-admin privileges or be logged in as admin.
@@ -61,33 +61,33 @@ make undeploy
 
 1. **Create a local cluster**
 ```sh
-kind create cluster --name pequod
+kind create cluster --name nautikus
 ```
 
 2. **Build and load image**
 ```sh
-make docker-build IMG=pequod:v1
-kind load docker-image pequod:v1 --name pequod
+make docker-build IMG=nautikus:v1
+kind load docker-image nautikus:v1 --name nautikus
 ```
 
 3. **Deploy controller**
 ```sh
-make deploy IMG=pequod:v1
+make deploy IMG=nautikus:v1
 ```
 
 4. **Verify deployment**
 ```sh
-kubectl get pods -n pequod-system
+kubectl get pods -n nautikus-system
 ```
 
 5. **Run a test DAG**
 ```sh
 kubectl apply -f config/samples/workflow_v1_dag_test.yaml
 kubectl get dags
-kubectl logs -n pequod-system -l control-plane=controller-manager
+kubectl logs -n nautikus-system -l control-plane=controller-manager
 ```
 
 6. **Cleanup**
 ```sh
-kind delete cluster --name pequod
+kind delete cluster --name nautikus
 ```

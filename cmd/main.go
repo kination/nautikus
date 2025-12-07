@@ -35,8 +35,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	workflowv1 "github.com/kination/pequod/api/v1"
-	"github.com/kination/pequod/internal/controller"
+	workflowv1 "github.com/kination/nautikus/api/v1"
+	"github.com/kination/nautikus/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 

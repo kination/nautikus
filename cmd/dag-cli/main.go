@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kination/pequod/internal/compiler"
+	"github.com/kination/nautikus/internal/compiler"
 )
 
 func main() {

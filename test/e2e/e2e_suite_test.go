@@ -28,7 +28,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/kination/pequod/test/utils"
+	"github.com/kination/nautikus/test/utils"
 )
 
 var (
