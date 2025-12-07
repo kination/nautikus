@@ -14,7 +14,7 @@ func main() {
 	outputDir := flag.String("out", "dist", "Directory to save generated JSON files")
 	flag.Parse()
 
-	fmt.Println("🚀 Starting Pequod DAG Compiler...")
+	fmt.Println("🚀 Starting Nautikus DAG Compiler...")
 	fmt.Printf("   - Config: %s\n", *configPath)
 	fmt.Printf("   - Output: %s\n", *outputDir)
 

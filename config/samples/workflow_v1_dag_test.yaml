@@ -6,4 +6,4 @@ spec:
   tasks:
     - name: hello-task
       type: Bash
-      command: "echo 'Hello from Pequod!'"
+      command: "echo 'Hello from Nautikus!'"

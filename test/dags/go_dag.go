@@ -31,7 +31,7 @@ func main() {
 	// Define DAG
 	dag := workflowv1.Dag{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "workflow.pequod.io/v1",
+			APIVersion: "workflow.nautikus.io/v1",
 			Kind:       "Dag",
 		},
 		ObjectMeta: metav1.ObjectMeta{
