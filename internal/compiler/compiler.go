@@ -29,7 +29,7 @@ func CompileDags(configPath string, outputDir string) error {
 		return fmt.Errorf("yaml parse error: %w", err)
 	}
 
-	// Output 디렉토리 초기화 (없으면 생성)
+	// Generate output directory if not exists
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create output dir: %w", err)
 	}
@@ -45,13 +45,12 @@ func CompileDags(configPath string, outputDir string) error {
 				return nil
 			}
 
-			// 확장자에 따른 처리
+			// support python and go file
 			ext := filepath.Ext(d.Name())
 			switch ext {
 			case ".py":
 				return generateJSON("python3", []string{path}, path, outputDir)
 			case ".go":
-				// Go 파일은 'go run'으로 실행
 				return generateJSON("go", []string{"run", path}, path, outputDir)
 			}
 			return nil
@@ -64,7 +63,7 @@ func CompileDags(configPath string, outputDir string) error {
 	return nil
 }
 
-// generateJSON은 스크립트(py/go)를 실행하고 표준 출력을 파일로 저장합니다.
+// generateJSON is a helper function that runs a command and saves the standard output to a file.
 func generateJSON(cmdName string, cmdArgs []string, srcPath string, outputDir string) error {
 	cmd := exec.Command(cmdName, cmdArgs...)
 
@@ -72,7 +71,6 @@ func generateJSON(cmdName string, cmdArgs []string, srcPath string, outputDir st
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// 실행
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("execution failed for %s\n[Stderr]: %s", srcPath, stderr.String())
 	}
@@ -83,7 +81,7 @@ func generateJSON(cmdName string, cmdArgs []string, srcPath string, outputDir st
 		return nil
 	}
 
-	// 파일 저장 (example.py -> example.json)
+	// convert output to file (blablabla.py -> blablabla.json)
 	baseName := filepath.Base(srcPath)
 	ext := filepath.Ext(baseName)
 	fileName := strings.TrimSuffix(baseName, ext) + ".json"

@@ -4,7 +4,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TaskType은 지원할 Operator 종류를 정의합니다.
+// TaskType defines the type of task
 type TaskType string
 
 const (
@@ -13,24 +13,24 @@ const (
 	TaskTypeGo     TaskType = "Go"
 )
 
-// TaskSpec은 DAG 내부의 개별 작업 단위입니다.
+// TaskSpec defines the task spec
 type TaskSpec struct {
 	Name         string   `json:"name"`
 	Type         TaskType `json:"type"`
-	Dependencies []string `json:"dependencies,omitempty"` // 이 Task가 실행되기 위해 완료되어야 할 부모 Task들
+	Dependencies []string `json:"dependencies,omitempty"` // Parent tasks that must be completed before this task can run
 
-	// Operator별 실행 내용
-	Command string `json:"command,omitempty"` // Bash용
-	Script  string `json:"script,omitempty"`  // Python/Go 코드 본문
-	Image   string `json:"image,omitempty"`   // 커스텀 이미지 사용 시
+	// Execution details for each task type
+	Command string `json:"command,omitempty"` // For Bash tasks
+	Script  string `json:"script,omitempty"`  // For Python/Go code
+	Image   string `json:"image,omitempty"`   // Custom container image if needed
 }
 
-// DagSpec은 사용자가 정의하는 DAG의 전체 명세입니다.
+// DagSpec defines the complete specification of a DAG as defined by the user.
 type DagSpec struct {
 	Tasks []TaskSpec `json:"tasks"`
 }
 
-// TaskStatus는 개별 Task의 현재 상태입니다.
+// TaskState represents the current state of an individual task.
 type TaskState string
 
 const (
@@ -47,9 +47,9 @@ type TaskStatus struct {
 	Message string    `json:"message,omitempty"`
 }
 
-// DagStatus는 DAG 전체의 상태입니다.
+// DagStatus represents the overall status of the entire DAG.
 type DagStatus struct {
-	State        TaskState    `json:"state"` // DAG 전체 상태 (Running, Completed...)
+	State        TaskState    `json:"state"` // Overall DAG state (Running, Completed, etc.)
 	TaskStatuses []TaskStatus `json:"taskStatuses,omitempty"`
 }
 

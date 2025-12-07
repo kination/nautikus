@@ -18,9 +18,9 @@ import (
 )
 
 // DagReconciler reconciles a Dag object
-// +kubebuilder:rbac:groups=workflow.pequod.io,resources=dags,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=workflow.pequod.io,resources=dags/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=workflow.pequod.io,resources=dags/finalizers,verbs=update
+// +kubebuilder:rbac:groups=workflow.nautikus.io,resources=dags,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=workflow.nautikus.io,resources=dags/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=workflow.nautikus.io,resources=dags/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
 type DagReconciler struct {
 	client.Client

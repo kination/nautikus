@@ -19,7 +19,7 @@ class Task:
         if self.script: d["script"] = self.script
         return d
 
-    # >> 연산자 오버로딩으로 의존성 설정 (Airflow 스타일)
+    # dependency with overloading
     def __rshift__(self, other):
         other.dependencies.append(self.name)
         return other
@@ -40,19 +40,18 @@ class DAG:
         }
         return json.dumps(manifest, indent=2)
 
-# === 사용 예시 (User Code) ===
 if __name__ == "__main__":
-    # 1. Bash Task
+    # test bash task
     t1 = Task("print-date", "Bash", command="date")
 
-    # 2. Python Task
+    # test python task
     py_code = """
 import random
 print(f"Random number: {random.randint(1, 100)}")
 """
     t2 = Task("random-py", "Python", script=py_code)
 
-    # 3. Go Task
+    # test go task
     go_code = """
 package main
 import "fmt"
@@ -62,10 +61,8 @@ func main() {
 """
     t3 = Task("hello-go", "Go", script=go_code)
 
-    # 의존성 설정: t1 -> t2 -> t3
     t1 >> t2 >> t3
 
-    # JSON 생성
     my_dag = DAG("example-dag", [t1, t2, t3])
     print(my_dag.generate_json())
     
