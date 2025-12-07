@@ -1,4 +1,4 @@
-apiVersion: workflow.pequod.io/v1
+apiVersion: workflow.nautikus.io/v1
 kind: Dag
 metadata:
   name: dag-test

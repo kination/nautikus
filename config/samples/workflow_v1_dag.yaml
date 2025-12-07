@@ -1,8 +1,8 @@
-apiVersion: workflow.pequod.io/v1
+apiVersion: workflow.nautikus.io/v1
 kind: Dag
 metadata:
   labels:
-    app.kubernetes.io/name: pequod
+    app.kubernetes.io/name: nautikus
     app.kubernetes.io/managed-by: kustomize
   name: dag-sample
 spec:

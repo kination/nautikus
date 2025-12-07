@@ -1,4 +1,4 @@
-module github.com/kination/pequod
+module github.com/kination/nautikus
 
 go 1.24.6
 

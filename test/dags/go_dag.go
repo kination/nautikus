@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	workflowv1 "github.com/kination/pequod/api/v1"
+	workflowv1 "github.com/kination/nautikus/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
