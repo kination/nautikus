@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -49,9 +50,9 @@ func CompileDags(configPath string, outputDir string) error {
 			ext := filepath.Ext(d.Name())
 			switch ext {
 			case ".py":
-				return generateJSON("python3", []string{path}, path, outputDir)
+				return generateYAML("python3", []string{path}, path, outputDir)
 			case ".go":
-				return generateJSON("go", []string{"run", path}, path, outputDir)
+				return generateYAML("go", []string{"run", path}, path, outputDir)
 			}
 			return nil
 		})
@@ -63,8 +64,8 @@ func CompileDags(configPath string, outputDir string) error {
 	return nil
 }
 
-// generateJSON is a helper function that runs a command and saves the standard output to a file.
-func generateJSON(cmdName string, cmdArgs []string, srcPath string, outputDir string) error {
+// generateYAML is a helper function that runs a command, parses JSON output, and saves it as YAML.
+func generateYAML(cmdName string, cmdArgs []string, srcPath string, outputDir string) error {
 	cmd := exec.Command(cmdName, cmdArgs...)
 
 	var stdout, stderr bytes.Buffer
@@ -81,13 +82,34 @@ func generateJSON(cmdName string, cmdArgs []string, srcPath string, outputDir st
 		return nil
 	}
 
-	// convert output to file (blablabla.py -> blablabla.json)
+	// Parse JSON output from the script
+	var data interface{}
+	if err := json.Unmarshal(output, &data); err != nil {
+		return fmt.Errorf("failed to parse JSON output from %s: %w", srcPath, err)
+	}
+
+	// Convert to YAML with 2-space indentation
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2) // Set indent to 2 spaces (Kubernetes standard)
+
+	if err := encoder.Encode(data); err != nil {
+		return fmt.Errorf("failed to convert to YAML: %w", err)
+	}
+
+	if err := encoder.Close(); err != nil {
+		return fmt.Errorf("failed to close YAML encoder: %w", err)
+	}
+
+	yamlOutput := buf.Bytes()
+
+	// Save as YAML file (blablabla.py -> blablabla.yaml)
 	baseName := filepath.Base(srcPath)
 	ext := filepath.Ext(baseName)
-	fileName := strings.TrimSuffix(baseName, ext) + ".json"
+	fileName := strings.TrimSuffix(baseName, ext) + ".yaml"
 	savePath := filepath.Join(outputDir, fileName)
 
-	if err := os.WriteFile(savePath, output, 0644); err != nil {
+	if err := os.WriteFile(savePath, yamlOutput, 0644); err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
 

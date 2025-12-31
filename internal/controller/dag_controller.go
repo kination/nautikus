@@ -186,7 +186,7 @@ func (r *DagReconciler) buildPod(dag *workflowv1.Dag, task workflowv1.TaskSpec) 
 		// TODO: Use ConfigMap to mount code
 		command = []string{"/bin/sh", "-c"}
 		// Simple inline execution example (complex code should use ConfigMap)
-		goCmd := fmt.Sprintf("echo '%s' > main.go && go run main.go", task.Script)
+		goCmd := fmt.Sprintf("echo '%s' > main.go && go mod init dag && go mod tidy && go run main.go", task.Script)
 		args = []string{goCmd}
 	}
 
@@ -207,10 +207,22 @@ func (r *DagReconciler) buildPod(dag *workflowv1.Dag, task workflowv1.TaskSpec) 
 					Image:   image,
 					Command: command,
 					Args:    args,
+					Env:     r.buildEnv(task.Env),
 				},
 			},
 		},
 	}
+}
+
+func (r *DagReconciler) buildEnv(envMap map[string]string) []corev1.EnvVar {
+	var envVars []corev1.EnvVar
+	for k, v := range envMap {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return envVars
 }
 
 // SetupWithManager sets up the controller with the Manager.
