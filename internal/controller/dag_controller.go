@@ -6,15 +6,17 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	workflowv1 "github.com/kination/nautikus/api/v1"
+	"github.com/kination/nautikus/internal/executor"
+	podexecutor "github.com/kination/nautikus/internal/executor/pod"
+	"github.com/kination/nautikus/internal/runner"
+	"github.com/kination/nautikus/internal/scheduler"
 )
 
 // DagReconciler reconciles a Dag object
@@ -25,10 +27,50 @@ import (
 type DagReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// Separated components for Phase B architecture
+	ExecutorRegistry *executor.Registry
+	Scheduler        *scheduler.DefaultScheduler
+	Runner           *runner.DefaultRunner
+}
+
+// SetupComponents initializes the executor registry, scheduler, and runner
+func (r *DagReconciler) SetupComponents() {
+	// Setup executor registry
+	if r.ExecutorRegistry == nil {
+		r.ExecutorRegistry = executor.NewRegistry()
+	}
+
+	// Register the Pod executor for Bash, Python, Go task types
+	podExec := podexecutor.New(executor.ExecutorConfig{
+		Client: r.Client,
+		Scheme: r.Scheme,
+	})
+	r.ExecutorRegistry.Register(podExec)
+
+	// Setup scheduler with default config
+	if r.Scheduler == nil {
+		r.Scheduler = scheduler.NewDefaultScheduler()
+	}
+
+	// Setup runner with executor registry
+	if r.Runner == nil {
+		r.Runner = runner.NewDefaultRunner(r.ExecutorRegistry)
+	}
+}
+
+// SetupExecutors is kept for backward compatibility
+func (r *DagReconciler) SetupExecutors() {
+	r.SetupComponents()
 }
 
 func (r *DagReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
+
+	// Ensure components are set up
+	if r.Scheduler == nil || r.Runner == nil {
+		r.SetupComponents()
+	}
 
 	// Bring DAG CR
 	var dag workflowv1.Dag
@@ -41,22 +83,67 @@ func (r *DagReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// Find next task to run (dependency check)
-	nextTasks := r.getNextTasks(&dag)
+	// Check if DAG is already completed or failed
+	if dag.Status.State == workflowv1.StateCompleted || dag.Status.State == workflowv1.StateFailed {
+		return ctrl.Result{}, nil
+	}
 
-	// Create Pod
+	// Use Scheduler to determine next tasks
+	nextTasks, err := r.Scheduler.Schedule(ctx, &dag)
+	if err != nil {
+		log.Error(err, "Failed to schedule tasks")
+		return ctrl.Result{}, err
+	}
+
+	// Use Runner to execute scheduled tasks
 	for _, task := range nextTasks {
-		pod := r.buildPod(&dag, task)
-		// Set owner reference (Pod will be deleted when DAG is deleted)
-		if err := controllerutil.SetControllerReference(&dag, pod, r.Scheme); err != nil {
+		// Add task to status as Pending before execution
+		dag.Status.TaskStatuses = append(dag.Status.TaskStatuses, workflowv1.TaskStatus{
+			Name:    task.Name,
+			State:   workflowv1.StatePending,
+			PodName: fmt.Sprintf("%s-%s", dag.Name, task.Name),
+		})
+
+		// Notify scheduler that task is starting
+		r.Scheduler.NotifyTaskStarted(dag.Name, task.Name)
+
+		log.Info("Executing task", "dag", dag.Name, "task", task.Name, "type", task.Type)
+
+		// Execute task using runner
+		result, err := r.Runner.Run(ctx, &dag, &task)
+		if err != nil {
+			log.Error(err, "Failed to run task", "task", task.Name)
+			// Update task status to failed
+			for i := range dag.Status.TaskStatuses {
+				if dag.Status.TaskStatuses[i].Name == task.Name {
+					dag.Status.TaskStatuses[i].State = workflowv1.StateFailed
+					dag.Status.TaskStatuses[i].Message = err.Error()
+					break
+				}
+			}
+			dag.Status.State = workflowv1.StateFailed
+			r.Scheduler.NotifyTaskCompleted(dag.Name, task.Name)
+
+			// Update status and return error
+			if updateErr := r.Status().Update(ctx, &dag); updateErr != nil {
+				log.Error(updateErr, "Failed to update DAG status")
+			}
 			return ctrl.Result{}, err
 		}
 
-		log.Info("Creating a new Pod", "Pod.Name", pod.Name, "Task.Name", task.Name)
-		if err := r.Create(ctx, pod); err != nil {
-			return ctrl.Result{}, err
+		// Update task status from result
+		for i := range dag.Status.TaskStatuses {
+			if dag.Status.TaskStatuses[i].Name == task.Name {
+				dag.Status.TaskStatuses[i].State = result.State
+				dag.Status.TaskStatuses[i].PodName = result.PodName
+				dag.Status.TaskStatuses[i].Message = result.Message
+				break
+			}
 		}
 	}
+
+	// Check if all tasks are completed
+	r.updateDAGState(&dag)
 
 	// Update Status
 	if err := r.Status().Update(ctx, &dag); err != nil {
@@ -71,7 +158,7 @@ func (r *DagReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	return ctrl.Result{}, nil
 }
 
-// Sync Pod status to DAG status
+// syncStatus syncs Pod status to DAG status
 func (r *DagReconciler) syncStatus(ctx context.Context, dag *workflowv1.Dag) error {
 	// Initialize map
 	if dag.Status.TaskStatuses == nil {
@@ -100,133 +187,76 @@ func (r *DagReconciler) syncStatus(ctx context.Context, dag *workflowv1.Dag) err
 			continue
 		}
 
-		// Bring Pod
-		pod := &corev1.Pod{}
-		err := r.Get(ctx, types.NamespacedName{Name: currentStatus.PodName, Namespace: dag.Namespace}, pod)
+		// Use Runner to get status
+		state, err := r.Runner.GetStatus(ctx, dag, &taskSpec)
 		if err != nil {
-			if errors.IsNotFound(err) {
-				// Skip if Pod not found
-				continue
+			// Fallback to legacy Pod status check
+			pod := &corev1.Pod{}
+			err := r.Get(ctx, types.NamespacedName{Name: currentStatus.PodName, Namespace: dag.Namespace}, pod)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					continue
+				}
+				return err
 			}
-			return err
+
+			if pod.Status.Phase == corev1.PodSucceeded {
+				currentStatus.State = workflowv1.StateCompleted
+				r.Scheduler.NotifyTaskCompleted(dag.Name, taskSpec.Name)
+			} else if pod.Status.Phase == corev1.PodFailed {
+				currentStatus.State = workflowv1.StateFailed
+				dag.Status.State = workflowv1.StateFailed
+				r.Scheduler.NotifyTaskCompleted(dag.Name, taskSpec.Name)
+			} else {
+				currentStatus.State = workflowv1.StateRunning
+			}
+			continue
 		}
 
-		// Update Pod status
-		if pod.Status.Phase == corev1.PodSucceeded {
-			currentStatus.State = workflowv1.StateCompleted
-		} else if pod.Status.Phase == corev1.PodFailed {
-			currentStatus.State = workflowv1.StateFailed
-			dag.Status.State = workflowv1.StateFailed // If one task fails, mark DAG as failed
-		} else {
-			currentStatus.State = workflowv1.StateRunning
+		// Update status if changed
+		if currentStatus.State != state {
+			previousState := currentStatus.State
+			currentStatus.State = state
+
+			// Notify scheduler when task completes
+			if (state == workflowv1.StateCompleted || state == workflowv1.StateFailed) &&
+				(previousState == workflowv1.StateRunning || previousState == workflowv1.StatePending) {
+				r.Scheduler.NotifyTaskCompleted(dag.Name, taskSpec.Name)
+			}
+
+			if state == workflowv1.StateFailed {
+				dag.Status.State = workflowv1.StateFailed
+			}
 		}
 	}
 	return nil
 }
 
-// Find next task to run (dependency check)
-func (r *DagReconciler) getNextTasks(dag *workflowv1.Dag) []workflowv1.TaskSpec {
-	var nextTasks []workflowv1.TaskSpec
-
-	// Initialize status map
-	statusMap := make(map[string]workflowv1.TaskState)
-	for _, s := range dag.Status.TaskStatuses {
-		statusMap[s.Name] = s.State
+// updateDAGState checks if all tasks are completed and updates DAG state
+func (r *DagReconciler) updateDAGState(dag *workflowv1.Dag) {
+	if dag.Status.State == workflowv1.StateFailed {
+		return
 	}
 
-	for _, task := range dag.Spec.Tasks {
-		// Skip if already running or completed
-		if state, ok := statusMap[task.Name]; ok && state != "" {
-			continue
-		}
-
-		// Dependency check
-		allDepsCompleted := true
-		for _, dep := range task.Dependencies {
-			if statusMap[dep] != workflowv1.StateCompleted {
-				allDepsCompleted = false
-				break
-			}
-		}
-
-		if allDepsCompleted {
-			nextTasks = append(nextTasks, task)
-			// Prevent duplicate execution by adding status to Pending (actual update at Reconcile end)
-			dag.Status.TaskStatuses = append(dag.Status.TaskStatuses, workflowv1.TaskStatus{
-				Name:    task.Name,
-				State:   workflowv1.StatePending,
-				PodName: fmt.Sprintf("%s-%s", dag.Name, task.Name), // Pod name rule
-			})
+	allCompleted := true
+	for _, ts := range dag.Status.TaskStatuses {
+		if ts.State != workflowv1.StateCompleted {
+			allCompleted = false
+			break
 		}
 	}
-	return nextTasks
-}
 
-// Convert TaskSpec to Pod (Bash, Python, Go Operator logic)
-func (r *DagReconciler) buildPod(dag *workflowv1.Dag, task workflowv1.TaskSpec) *corev1.Pod {
-	podName := fmt.Sprintf("%s-%s", dag.Name, task.Name)
-
-	var image string
-	var command []string
-	var args []string
-
-	switch task.Type {
-	case workflowv1.TaskTypeBash:
-		image = "ubuntu:latest"
-		command = []string{"/bin/bash", "-c"}
-		args = []string{task.Command}
-	case workflowv1.TaskTypePython:
-		image = "python:3.9-slim"
-		// Python code inline execution
-		command = []string{"python", "-c"}
-		args = []string{task.Script}
-	case workflowv1.TaskTypeGo:
-		image = "golang:1.20-alpine"
-		// Go code inline execution
-		// TODO: Use ConfigMap to mount code
-		command = []string{"/bin/sh", "-c"}
-		// Simple inline execution example (complex code should use ConfigMap)
-		goCmd := fmt.Sprintf("echo '%s' > main.go && go mod init dag && go mod tidy && go run main.go", task.Script)
-		args = []string{goCmd}
+	// Check if all tasks have status entries
+	if allCompleted && len(dag.Status.TaskStatuses) == len(dag.Spec.Tasks) {
+		dag.Status.State = workflowv1.StateCompleted
 	}
-
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: dag.Namespace,
-			Labels: map[string]string{
-				"dag":  dag.Name,
-				"task": task.Name,
-			},
-		},
-		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			Containers: []corev1.Container{
-				{
-					Name:    "task-runner",
-					Image:   image,
-					Command: command,
-					Args:    args,
-					Env:     r.buildEnv(task.Env),
-				},
-			},
-		},
-	}
-}
-
-func (r *DagReconciler) buildEnv(envMap map[string]string) []corev1.EnvVar {
-	var envVars []corev1.EnvVar
-	for k, v := range envMap {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  k,
-			Value: v,
-		})
-	}
-	return envVars
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DagReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Initialize components before setting up
+	r.SetupComponents()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&workflowv1.Dag{}).
 		Owns(&corev1.Pod{}).
