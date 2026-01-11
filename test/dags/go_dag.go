@@ -1,53 +1,71 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
+	"math/rand"
 
-	workflowv1 "github.com/kination/nautikus/api/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	sdk "github.com/kination/nautikus/internal/sdk/go"
 )
 
+// -----------------------------------------------------------
+// User Logic (Pure Go)
+// -----------------------------------------------------------
+
+func extractData() {
+	fmt.Println("Extracting data from source...")
+	fmt.Println("Data extraction complete.")
+}
+
+func validateData() {
+	fmt.Println("Validating extracted data...")
+	fmt.Println("Validation passed.")
+}
+
+func checkDataQuality() string {
+	// Simulate quality check - returns branch name
+	score := rand.Intn(100)
+	fmt.Printf("Data quality score: %d\n", score)
+	if score >= 70 {
+		return "high_quality"
+	}
+	return "low_quality"
+}
+
+func processHighQuality() {
+	fmt.Println("Processing high quality data - full pipeline")
+}
+
+func processLowQuality() {
+	fmt.Println("Processing low quality data - applying corrections")
+}
+
+func cleanData() {
+	fmt.Println("Cleaning and normalizing data...")
+}
+
+func loadData() {
+	fmt.Println("Loading processed data to destination...")
+	fmt.Println("Pipeline complete!")
+}
+
 func main() {
-	// Define Tasks
-	t1 := workflowv1.TaskSpec{
-		Name:    "go-task-1",
-		Type:    workflowv1.TaskTypeBash,
-		Command: "echo 'Hello from Go DAG'",
-	}
-
-	t2 := workflowv1.TaskSpec{
-		Name:         "go-task-2",
-		Type:         workflowv1.TaskTypeGo,
-		Dependencies: []string{"go-task-1"},
-		Script: `package main
-import "fmt"
-func main() {
-	fmt.Println("This is a Go task running inside the Pod")
-}`,
-	}
-
-	// Define DAG
-	dag := workflowv1.Dag{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "workflow.nautikus.io/v1",
-			Kind:       "Dag",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "go-generated-dag",
-		},
-		Spec: workflowv1.DagSpec{
-			Tasks: []workflowv1.TaskSpec{t1, t2},
-		},
-	}
-
-	// Output JSON (which is valid YAML)
-	output, err := json.MarshalIndent(dag, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error marshaling DAG: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(string(output))
+	sdk.NewDAG("go-etl-pipeline").
+		// Sequential tasks: extract -> validate
+		AddSequential(
+			sdk.Task{Name: "extract", Fn: extractData},
+			sdk.Task{Name: "validate", Fn: validateData},
+		).
+		// Conditional branching based on data quality
+		AddBranch("check_quality", checkDataQuality, map[string][]sdk.Task{
+			"high_quality": {
+				{Name: "process_high", Fn: processHighQuality},
+			},
+			"low_quality": {
+				{Name: "process_low", Fn: processLowQuality},
+				{Name: "clean", Fn: cleanData},
+			},
+		}).
+		// Join: wait for either branch to complete
+		AddJoin("load", loadData, "process_high", "clean").
+		Serve()
 }

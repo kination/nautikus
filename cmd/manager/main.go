@@ -37,6 +37,10 @@ import (
 
 	workflowv1 "github.com/kination/nautikus/api/v1"
 	"github.com/kination/nautikus/internal/controller"
+	"github.com/kination/nautikus/internal/executor"
+	podexecutor "github.com/kination/nautikus/internal/executor/pod"
+	"github.com/kination/nautikus/internal/runner"
+	"github.com/kination/nautikus/internal/scheduler"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -178,9 +182,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.DagReconciler{
+	// Setup shared components for Phase B architecture
+	// These can be configured via flags or environment variables in the future
+	executorRegistry := executor.NewRegistry()
+	podExec := podexecutor.New(executor.ExecutorConfig{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+	})
+	executorRegistry.Register(podExec)
+
+	schedulerConfig := scheduler.DefaultSchedulerConfig()
+	// TODO: Make configurable via flags
+	// schedulerConfig.MaxActiveTasks = maxActiveTasks
+	// schedulerConfig.Policy = schedulerPolicy
+	taskScheduler := scheduler.NewScheduler(schedulerConfig)
+
+	taskRunner := runner.NewDefaultRunner(executorRegistry)
+
+	setupLog.Info("initialized components",
+		"scheduler", taskScheduler.Name(),
+		"policy", taskScheduler.Policy(),
+		"maxActiveTasks", schedulerConfig.MaxActiveTasks)
+
+	if err := (&controller.DagReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		ExecutorRegistry: executorRegistry,
+		Scheduler:        taskScheduler,
+		Runner:           taskRunner,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dag")
 		os.Exit(1)

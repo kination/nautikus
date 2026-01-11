@@ -108,6 +108,14 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/main.go
 
+.PHONY: build-cli
+build-cli: ## Build dag-cli binary.
+	go build -o bin/dag-cli cmd/dag-cli/main.go
+
+.PHONY: compile-dags
+compile-dags: build-cli ## Compile DAG definitions to YAML manifests.
+	./bin/dag-cli compile
+
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go

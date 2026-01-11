@@ -20,9 +20,10 @@ type TaskSpec struct {
 	Dependencies []string `json:"dependencies,omitempty"` // Parent tasks that must be completed before this task can run
 
 	// Execution details for each task type
-	Command string `json:"command,omitempty"` // For Bash tasks
-	Script  string `json:"script,omitempty"`  // For Python/Go code
-	Image   string `json:"image,omitempty"`   // Custom container image if needed
+	Command string            `json:"command,omitempty"` // For Bash tasks
+	Script  string            `json:"script,omitempty"`  // For Python/Go code
+	Image   string            `json:"image,omitempty"`   // Custom container image if needed
+	Env     map[string]string `json:"env,omitempty"`     // Environment variables for the task
 }
 
 // DagSpec defines the complete specification of a DAG as defined by the user.
