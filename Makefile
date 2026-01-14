@@ -106,7 +106,15 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+	go build -o bin/manager cmd/manager/main.go
+
+.PHONY: build-cli
+build-cli: ## Build dag-cli binary.
+	go build -o bin/dag-cli cmd/dag-cli/main.go
+
+.PHONY: compile-dags
+compile-dags: build-cli ## Compile DAG definitions to YAML manifests.
+	./bin/dag-cli compile
 
 .PHONY: build-cli
 build-cli: ## Build dag-cli binary.
@@ -118,7 +126,7 @@ compile-dags: build-cli ## Compile DAG definitions to YAML manifests.
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/main.go
+	go run ./cmd/manager/main.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
