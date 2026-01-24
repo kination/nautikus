@@ -3,7 +3,7 @@ package sdk
 import (
 	"os"
 
-	"github.com/kination/nautikus/internal/sdk/go/processing"
+	"github.com/kination/nautikus/pkg/sdk/go/processing"
 )
 
 // Task represents a unit of work in a DAG
@@ -15,7 +15,7 @@ type Task struct {
 
 // BranchCondition defines a conditional branch
 type BranchCondition struct {
-	Condition func() bool // Returns true to execute TrueBranch
+	Condition   func() bool // Returns true to execute TrueBranch
 	TrueBranch  []Task
 	FalseBranch []Task
 }
@@ -83,10 +83,10 @@ func (b *DAGBuilder) AddParallel(afterTask string, tasks ...Task) *DAGBuilder {
 func (b *DAGBuilder) AddBranch(conditionTaskName string, conditionFn func() string, branches map[string][]Task) *DAGBuilder {
 	// Add the condition task that returns which branch to take
 	b.tasks = append(b.tasks, processing.TaskDef{
-		Name:           conditionTaskName,
-		BranchFn:       conditionFn,
-		TaskType:       processing.TaskTypeBranch,
-		BranchTargets:  getBranchNames(branches),
+		Name:          conditionTaskName,
+		BranchFn:      conditionFn,
+		TaskType:      processing.TaskTypeBranch,
+		BranchTargets: getBranchNames(branches),
 	})
 
 	// Add all branch tasks with skip conditions

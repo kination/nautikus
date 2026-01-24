@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	sdk "github.com/kination/nautikus/internal/sdk/go"
+	sdk "github.com/kination/nautikus/pkg/sdk/go"
 )
 
 // -----------------------------------------------------------
