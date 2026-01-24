@@ -29,7 +29,7 @@ sdk/
 ```go
 package main
 
-import sdk "github.com/kination/nautikus/internal/sdk/go"
+import sdk "github.com/kination/nautikus/pkg/sdk/go"
 
 func task1() { /* ... */ }
 func task2() { /* ... */ }
@@ -47,7 +47,7 @@ func main() {
 ### Python
 
 ```python
-from internal.sdk.python import DAGBuilder, Task
+from pkg.sdk.python import DAGBuilder, Task
 
 def task1(): pass
 def task2(): pass
@@ -172,7 +172,7 @@ package main
 
 import (
     "fmt"
-    sdk "github.com/kination/nautikus/internal/sdk/go"
+    sdk "github.com/kination/nautikus/pkg/sdk/go"
 )
 
 func extract()     { fmt.Println("Extracting...") }
@@ -204,7 +204,7 @@ func main() {
 ### Python
 
 ```python
-from internal.sdk.python import DAGBuilder, Task
+from pkg.sdk.python import DAGBuilder, Task
 
 def extract(): print("Extracting...")
 def validate(): print("Validating...")
@@ -240,7 +240,7 @@ sdk.Serve("dag-name", []func(){task1, task2})
 
 ```python
 # Python
-from internal.sdk.python import serve
+from pkg.sdk.python import serve
 serve("dag-name", [task1, task2])
 ```
 

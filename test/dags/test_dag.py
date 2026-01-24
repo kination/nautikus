@@ -5,7 +5,7 @@ import random
 # Add project root to sys.path to find internal module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from internal.sdk.python import DAGBuilder, Task
+from pkg.sdk.python import DAGBuilder, Task
 
 # -----------------------------------------------------------
 # User Logic (Pure Python)

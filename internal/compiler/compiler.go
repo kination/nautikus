@@ -85,7 +85,8 @@ func generateYAML(cmdName string, cmdArgs []string, srcPath string, outputDir st
 	// Parse JSON output from the script
 	var data interface{}
 	if err := json.Unmarshal(output, &data); err != nil {
-		return fmt.Errorf("failed to parse JSON output from %s: %w", srcPath, err)
+		log.Printf("⚠️  Skip: %s is not a valid DAG (failed to parse JSON: %v)", srcPath, err)
+		return nil
 	}
 
 	// Convert to YAML with 2-space indentation

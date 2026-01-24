@@ -113,41 +113,18 @@ kind delete cluster --name nautikus
 ```go
 package main
 
-import (
-    "encoding/json"
-    "fmt"
-    workflowv1 "github.com/kination/nautikus/api/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
+import sdk "github.com/kination/nautikus/pkg/sdk/go"
+
+func task1() { println("Hello from Task 1") }
+func task2() { println("Hello from Task 2") }
 
 func main() {
-    dag := workflowv1.Dag{
-        TypeMeta: metav1.TypeMeta{
-            APIVersion: "workflow.nautikus.io/v1",
-            Kind:       "Dag",
-        },
-        ObjectMeta: metav1.ObjectMeta{
-            Name: "my-workflow",
-        },
-        Spec: workflowv1.DagSpec{
-            Tasks: []workflowv1.TaskSpec{
-                {
-                    Name:    "task-1",
-                    Type:    workflowv1.TaskTypeBash,
-                    Command: "echo 'Hello from Task 1'",
-                },
-                {
-                    Name:         "task-2",
-                    Type:         workflowv1.TaskTypePython,
-                    Dependencies: []string{"task-1"},
-                    Script:       "print('Hello from Task 2')",
-                },
-            },
-        },
-    }
-    
-    output, _ := json.MarshalIndent(dag, "", "  ")
-    fmt.Println(string(output))
+    sdk.NewDAG("my-workflow").
+        AddSequential(
+            sdk.Task{Name: "task-1", Fn: task1},
+            sdk.Task{Name: "task-2", Fn: task2},
+        ).
+        Serve()
 }
 ```
 
@@ -235,11 +212,16 @@ make generate   # Generate DeepCopy methods
 nautikus/
 ├── api/v1/              # CRD definitions
 ├── cmd/
-│   ├── main.go          # Controller entrypoint
+│   ├── manager/         # Controller entrypoint
 │   └── dag-cli/         # DAG compiler CLI
 ├── internal/
-│   ├── controller/      # Reconciliation logic
+│   ├── controller/      # Orchestration logic (DagReconciler)
+│   ├── scheduler/       # Task dependency & scheduling logic
+│   ├── runner/          # Task execution & status monitoring
+│   ├── executor/        # Execution engines (Pod, etc.)
 │   └── compiler/        # Code-to-YAML compiler
+├── pkg/
+│   └── sdk/             # Go/Python SDK for users
 ├── config/              # Kubernetes manifests
 │   ├── crd/            # CRD definitions
 │   ├── rbac/           # RBAC rules
