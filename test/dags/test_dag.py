@@ -40,27 +40,20 @@ def load_data():
     print("Loading processed data to destination...")
     print("Pipeline complete!")
 
-def main():
-    (DAGBuilder("python-etl-pipeline")
-        # Sequential tasks: extract -> validate
-        .add_sequential(
-            Task(name="extract", fn=extract_data),
-            Task(name="validate", fn=validate_data),
-        )
-        # Conditional branching based on data quality
-        .add_branch("check_quality", check_data_quality, {
-            "high_quality": [
-                Task(name="process_high", fn=process_high_quality),
-            ],
-            "low_quality": [
-                Task(name="process_low", fn=process_low_quality),
-                Task(name="clean", fn=clean_data),
-            ],
-        })
-        # Join: wait for either branch to complete
-        .add_join("load", load_data, ["process_high", "clean"])
-        .serve()
-    )
+# This is main flow
+dag = DAGBuilder("python-etl-pipeline")
+dag.add_sequential(
+    Task(name="extract", fn=extract_data),
+    Task(name="validate", fn=validate_data),
+)
 
-if __name__ == "__main__":
-    main()
+dag.add_branch("check_quality", check_data_quality, {
+    "high_quality": [Task(name="process_high", fn=process_high_quality)],
+    "low_quality": [
+        Task(name="process_low", fn=process_low_quality),
+        Task(name="clean", fn=clean_data),
+    ],
+})
+
+dag.add_join("load", load_data, ["process_high", "clean"])
+dag.serve()

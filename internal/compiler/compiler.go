@@ -43,6 +43,10 @@ func CompileDags(configPath string, outputDir string) error {
 				return err
 			}
 			if d.IsDir() {
+				// Skip hidden directories and "scripts" folder
+				if strings.HasPrefix(d.Name(), ".") || d.Name() == "scripts" {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 
